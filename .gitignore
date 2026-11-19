@@ -1,0 +1,30 @@
+# Java build output
+backend/target/
+*.class
+
+# IDE
+.idea/
+**/.idea/
+*.iml
+
+# Local runtime
+logs/
+*.log
+*.pid
+
+# Nginx binaries and duplicate deployment assets
+deploy/nginx/nginx.exe
+deploy/nginx/logs/
+deploy/nginx/html/
+
+# Environment overrides
+.env
+.env.*
+!.env.example
+.env.local
+application-local.yaml
+application-local.yml
+
+# Local database snapshots and deployment backups
+deploy/backups/
+*.dump

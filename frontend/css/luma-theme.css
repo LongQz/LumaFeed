@@ -1,0 +1,215 @@
+/**
+ * LumaFeed visual theme.
+ *
+ * Layered over the original teaching-project pages so the business
+ * structure remains usable while the product identity is distinct.
+ *
+ * @author qzh
+ */
+:root {
+    --luma-primary: #0f8b8d;
+    --luma-primary-dark: #155e75;
+    --luma-accent: #f4a261;
+    --luma-bg: #edf7f4;
+    --luma-card: #ffffff;
+    --luma-ink: #18323a;
+    --luma-muted: #677b80;
+}
+
+body,
+button,
+input,
+textarea,
+select {
+    font-family: "PingFang SC", "Microsoft YaHei", "Hiragino Sans GB", sans-serif !important;
+    color: var(--luma-ink);
+}
+
+body,
+#app {
+    background: var(--luma-bg) !important;
+}
+
+.search-bar {
+    background: linear-gradient(120deg, var(--luma-primary-dark), var(--luma-primary)) !important;
+    box-shadow: 0 8px 24px rgba(15, 139, 141, 0.2);
+}
+
+.search-bar::before {
+    content: "LumaFeed";
+    margin-right: 8px;
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.4px;
+    white-space: nowrap;
+}
+
+.search-bar .el-input__inner {
+    border: 0 !important;
+    background: rgba(255, 255, 255, 0.94) !important;
+    box-shadow: 0 4px 14px rgba(15, 94, 117, 0.12);
+}
+
+.type-list {
+    background: rgba(255, 255, 255, 0.96) !important;
+    border-radius: 0 0 22px 22px;
+    box-shadow: 0 12px 28px rgba(22, 78, 99, 0.08) !important;
+}
+
+.type-text {
+    color: var(--luma-muted) !important;
+    font-weight: 600;
+}
+
+.blog-list {
+    display: flex !important;
+    flex-wrap: wrap;
+    justify-content: flex-start !important;
+    gap: 12px;
+    align-content: start;
+    padding: 12px;
+    background: transparent !important;
+}
+
+.blog-box {
+    width: calc(50% - 6px) !important;
+    margin: 0 !important;
+    overflow: hidden;
+    border-radius: 16px !important;
+    background: var(--luma-card) !important;
+    box-shadow: 0 8px 22px rgba(22, 78, 99, 0.09) !important;
+    transition: transform 160ms ease, box-shadow 160ms ease;
+}
+
+.blog-box:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 28px rgba(22, 78, 99, 0.15) !important;
+}
+
+.blog-img img {
+    display: block;
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    object-fit: cover;
+    border-radius: 0 !important;
+}
+
+.blog-title {
+    width: auto !important;
+    height: auto !important;
+    min-height: 42px;
+    padding: 9px 12px !important;
+    line-height: 1.5;
+    font-weight: 600;
+}
+
+.blog-foot {
+    align-items: center;
+    margin: 0 !important;
+    padding: 0 12px 12px !important;
+}
+
+.blog-user-icon {
+    width: 28px !important;
+    height: 28px;
+    flex: 0 0 28px;
+    margin-right: 8px !important;
+}
+
+.blog-user-icon img {
+    width: 28px !important;
+    height: 28px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.blog-user-name {
+    width: auto !important;
+    flex: 1;
+    color: var(--luma-muted);
+}
+
+.blog-liked {
+    width: auto !important;
+    align-items: center;
+    gap: 4px;
+    color: var(--luma-primary) !important;
+}
+
+.foot {
+    height: 64px !important;
+    background: rgba(255, 255, 255, 0.96) !important;
+    box-shadow: 0 -8px 24px rgba(22, 78, 99, 0.1) !important;
+    backdrop-filter: blur(12px);
+}
+
+.active,
+.blog-liked,
+.header-back-btn,
+.header-search {
+    color: var(--luma-primary) !important;
+}
+
+.header {
+    border-bottom-color: var(--luma-primary) !important;
+    box-shadow: 0 4px 16px rgba(22, 78, 99, 0.06);
+}
+
+.shop-list {
+    background: var(--luma-bg) !important;
+}
+
+.shop-box {
+    margin: 10px 12px !important;
+    border-radius: 16px !important;
+    box-shadow: 0 8px 20px rgba(22, 78, 99, 0.08);
+}
+
+.shop-img img {
+    border-radius: 12px !important;
+}
+
+.el-tabs__active-bar {
+    background-image: linear-gradient(to right, var(--luma-primary), var(--luma-accent)) !important;
+}
+
+.el-tabs__item.is-active,
+.el-radio__input.is-checked + .el-radio__label {
+    color: var(--luma-primary) !important;
+}
+
+.el-radio__input.is-checked .el-radio__inner,
+.el-checkbox__input.is-checked .el-checkbox__inner {
+    border-color: var(--luma-primary) !important;
+    background: var(--luma-primary) !important;
+}
+
+.el-button--primary {
+    border-color: var(--luma-primary) !important;
+    background: var(--luma-primary) !important;
+}
+
+.el-input__inner:focus {
+    border-color: var(--luma-primary) !important;
+}
+
+@media (min-width: 900px) {
+    #app {
+        position: relative;
+        width: min(920px, 100vw);
+        margin: 0 auto;
+        box-shadow: 0 0 42px rgba(22, 78, 99, 0.12);
+    }
+}
+
+@media (max-width: 420px) {
+    .blog-list {
+        gap: 8px;
+        padding: 8px;
+    }
+
+    .blog-box {
+        width: calc(50% - 4px) !important;
+        border-radius: 12px !important;
+    }
+}

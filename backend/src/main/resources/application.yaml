@@ -1,0 +1,30 @@
+server:
+  port: ${LUMAFEED_SERVER_PORT:8081}
+spring:
+  application:
+    name: lumafeed
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: ${LUMAFEED_MYSQL_URL:jdbc:mysql://localhost:3306/lumafeed?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=UTC}
+    username: ${LUMAFEED_MYSQL_USERNAME:root}
+    password: ${LUMAFEED_MYSQL_PASSWORD:123456}
+  redis:
+    host: ${LUMAFEED_REDIS_HOST:127.0.0.1}
+    port: ${LUMAFEED_REDIS_PORT:6379}
+    database: 0
+    lettuce:
+      pool:
+        max-active: 10      # 最大活跃连接数
+        max-idle: 8         # 最大空闲连接数
+        min-idle: 2         # 最小空闲连接数
+        max-wait: 5000ms    # 连接池最大阻塞等待时间
+    timeout: 5000ms         # 连接超时时间
+  jackson:
+    default-property-inclusion: non_null # JSON处理时忽略非空字段
+mybatis-plus:
+  type-aliases-package: com.lumafeed.entity # 别名扫描包
+logging:
+  level:
+    com.lumafeed: debug
+lumafeed:
+  agent-token: ${LUMAFEED_AGENT_TOKEN:luma-demo-token}

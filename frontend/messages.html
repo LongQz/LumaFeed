@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0">
+  <title>LumaFeed · 消息</title>
+  <link rel="stylesheet" href="./css/element.css">
+  <link rel="stylesheet" href="./css/main.css">
+  <link rel="stylesheet" href="./css/social-pages.css">
+</head>
+<body>
+<div id="app" class="social-app">
+  <header class="social-head">
+    <a class="social-back" href="/">‹</a>
+    <div><h1>消息</h1><p>和其他用户聊一聊</p></div>
+    <span id="unreadCount" class="social-head-action">0条未读</span>
+  </header>
+  <main class="social-main chat-main">
+    <aside class="contact-panel">
+      <div class="contact-title">联系人</div>
+      <div id="contactList" class="contact-list"></div>
+    </aside>
+    <section class="chat-panel">
+      <div id="chatHeader" class="chat-header">选择一位用户开始聊天</div>
+      <div id="chatMessages" class="chat-messages">
+        <div class="chat-empty">还没有选择联系人</div>
+      </div>
+      <form id="chatForm" class="chat-form">
+        <input id="chatInput" maxlength="1000" placeholder="输入消息" disabled>
+        <button disabled>发送</button>
+      </form>
+    </section>
+  </main>
+  <foot-bar :active-btn="3"></foot-bar>
+</div>
+<script src="./js/vue.js"></script>
+<script src="./js/axios.min.js"></script>
+<script src="./js/element.js"></script>
+<script src="./js/common.js"></script>
+<script src="./js/footer.js?v=20261119-3"></script>
+<script>
+  if (!sessionStorage.getItem("token")) location.href = "/login.html";
+  new Vue({ el: "#app" });
+
+  const contactList = document.querySelector("#contactList");
+  const chatMessages = document.querySelector("#chatMessages");
+  const chatInput = document.querySelector("#chatInput");
+  const chatButton = document.querySelector("#chatForm button");
+  let contacts = [];
+  let activeUserId = null;
+
+  function escapeHtml(value) {
+    return String(value ?? "").replaceAll("&", "&amp;").replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#039;");
+  }
+
+  function timeText(value) {
+    if (!value) return "";
+    return String(value).replace("T", " ").slice(0, 16);
+  }
+
+  function renderContacts() {
+    contactList.innerHTML = contacts.map((contact) => `
+      <button class="contact-item ${Number(contact.id) === activeUserId ? "active" : ""}" data-user="${contact.id}">
+        <span class="contact-avatar">${escapeHtml(contact.nickname.slice(0, 1))}</span>
+        <span class="contact-copy">
+          <b>${escapeHtml(contact.nickname)}</b>
+          <small>${escapeHtml(contact.last_message || "开始聊天")}</small>
+        </span>
+        ${Number(contact.unread) > 0 ? `<em>${contact.unread}</em>` : ""}
+      </button>
+    `).join("") || '<div class="empty-state">暂无可聊天用户</div>';
+    const unread = contacts.reduce((total, contact) => total + Number(contact.unread || 0), 0);
+    document.querySelector("#unreadCount").textContent = `${unread}条未读`;
+  }
+
+  async function loadContacts() {
+    try {
+      contacts = await axios.get("/direct-messages/contacts").then(({ data }) => data);
+      renderContacts();
+      if (!activeUserId && contacts.length) openConversation(contacts[0].id, contacts[0].nickname);
+    } catch (error) {
+      contactList.innerHTML = `<div class="empty-state">${escapeHtml(error.message)}</div>`;
+    }
+  }
+
+  async function openConversation(userId, nickname) {
+    activeUserId = Number(userId);
+    document.querySelector("#chatHeader").textContent = `与 ${nickname} 聊天`;
+    chatInput.disabled = false;
+    chatButton.disabled = false;
+    renderContacts();
+    try {
+      const messages = await axios.get(`/direct-messages/with/${userId}`).then(({ data }) => data);
+      chatMessages.innerHTML = messages.map((message) => `
+        <div class="chat-bubble ${message.mine ? "mine" : "other"}">
+          ${escapeHtml(message.content)}
+          <small>${timeText(message.created_at)}</small>
+        </div>
+      `).join("") || '<div class="chat-empty">还没有聊天记录，打个招呼吧</div>';
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+      const contact = contacts.find((item) => Number(item.id) === activeUserId);
+      if (contact) contact.unread = 0;
+      renderContacts();
+    } catch (error) {
+      chatMessages.innerHTML = `<div class="empty-state">${escapeHtml(error.message)}</div>`;
+    }
+  }
+
+  contactList.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-user]");
+    if (!button) return;
+    const contact = contacts.find((item) => Number(item.id) === Number(button.dataset.user));
+    if (contact) openConversation(contact.id, contact.nickname);
+  });
+
+  document.querySelector("#chatForm").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const content = chatInput.value.trim();
+    if (!activeUserId || !content) return;
+    try {
+      await axios.post("/direct-messages/send", { toUserId: activeUserId, content });
+      chatInput.value = "";
+      const contact = contacts.find((item) => Number(item.id) === activeUserId);
+      if (contact) contact.last_message = content;
+      openConversation(activeUserId, document.querySelector("#chatHeader").textContent.replace("与 ", "").replace(" 聊天", ""));
+    } catch (error) {
+      alert(error.message);
+    }
+  });
+
+  loadContacts();
+</script>
+</body>
+</html>
