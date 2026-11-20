@@ -29,6 +29,12 @@ Endpoint distribution:
 - Hot ranking: 2,733 requests
 - Following feed: 2,715 requests
 
+Rate limiter verification:
+
+- Scope: one user on the like endpoint
+- Limit: 120 permits per 60 seconds
+- 126 sequential requests: 120 succeeded and 6 were rejected by Redisson
+
 Reproduce:
 
 ```powershell
