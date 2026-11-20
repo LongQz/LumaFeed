@@ -57,6 +57,15 @@ POST /admin/ops/tasks
 X-LumaFeed-Agent-Token
 ```
 
+## Redis 并发与限流
+
+- `blog:hot:zset` 维护热门笔记排名，启动时按数据库点赞数预热。
+- 点赞状态使用 Redis Set，点赞切换、计数和热门分数由 Lua 原子更新。
+- `RRateLimiter` 对发布、点赞、Feed、热门读取和秒杀接口做分布式限流。
+- GEO 商户索引会在应用启动时从 MySQL 自动重建。
+
+压测结果和复现命令见 [docs/load-test-report.md](docs/load-test-report.md)。
+
 ## 数据库
 
 ```text

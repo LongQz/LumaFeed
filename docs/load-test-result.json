@@ -1,0 +1,22 @@
+{
+  "timestamp": "2026-11-20T15:41:09",
+  "baseUrl": "http://127.0.0.1:8081",
+  "concurrency": 32,
+  "durationSeconds": 10,
+  "totalRequests": 3515,
+  "successes": 3515,
+  "failures": 0,
+  "successRate": 100.0,
+  "requestsPerSecond": 348.79,
+  "latencyMs": {
+    "mean": 91.4,
+    "p50": 80.35,
+    "p95": 187.82,
+    "p99": 214.39,
+    "max": 248.59
+  },
+  "endpointCounts": {
+    "hot": 1762,
+    "feed": 1753
+  }
+}

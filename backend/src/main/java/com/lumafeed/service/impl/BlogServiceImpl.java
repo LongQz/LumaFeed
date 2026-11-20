@@ -17,18 +17,24 @@ import com.lumafeed.service.IUserService;
 import com.lumafeed.utils.SystemConstants;
 import com.lumafeed.utils.UserHolder;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ZSetOperations;
+import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import static com.lumafeed.utils.RedisConstants.BLOG_LIKED_KEY;
+import static com.lumafeed.utils.RedisConstants.BLOG_LIKED_USERS_KEY;
+import static com.lumafeed.utils.RedisConstants.BLOG_LIKE_COUNT_KEY;
 import static com.lumafeed.utils.RedisConstants.FEED_KEY;
+import static com.lumafeed.utils.RedisConstants.HOT_BLOG_KEY;
 
 /**
  * <p>
@@ -40,6 +46,14 @@ import static com.lumafeed.utils.RedisConstants.FEED_KEY;
  */
 @Service
 public class BlogServiceImpl extends ServiceImpl<BlogMapper, Blog> implements IBlogService {
+    private static final DefaultRedisScript<Long> LIKE_TOGGLE_SCRIPT;
+
+    static {
+        LIKE_TOGGLE_SCRIPT = new DefaultRedisScript<>();
+        LIKE_TOGGLE_SCRIPT.setLocation(new ClassPathResource("like_toggle.lua"));
+        LIKE_TOGGLE_SCRIPT.setResultType(Long.class);
+    }
+
     @Autowired
     private IUserService userService;
     @Autowired
@@ -50,49 +64,64 @@ public class BlogServiceImpl extends ServiceImpl<BlogMapper, Blog> implements IB
 
     @Override
     public Result likeBlog(Long id) {
-        // 1.获取登录用户
         Long userId = UserHolder.getUser().getId();
-        // 2.判断当前登录用户是否已经点赞
-        String key = BLOG_LIKED_KEY + id;
-        Double score = stringRedisTemplate.opsForZSet().score(key, userId.toString());
-        if (score == null) {
-            // 3.如果未点赞，可以点赞
-            // 3.1.数据库点赞数 + 1
-            boolean isSuccess = update().setSql("liked = liked + 1").eq("id", id).update();
-            // 3.2.保存用户到Redis的set集合  zadd key value score
-            if (isSuccess) {
-                stringRedisTemplate.opsForZSet().add(key, userId.toString(), System.currentTimeMillis());
-            }
-        } else {
-            // 4.如果已点赞，取消点赞
-            // 4.1.数据库点赞数 -1
-            boolean isSuccess = update().setSql("liked = liked - 1").eq("id", id).update();
-            // 4.2.把用户从Redis的set集合移除
-            if (isSuccess) {
-                stringRedisTemplate.opsForZSet().remove(key, userId.toString());
-            }
+        Blog blog = getById(id);
+        if (blog == null) {
+            return Result.fail("笔记不存在");
         }
-        return Result.ok();
+
+        String likedUsersKey = BLOG_LIKED_USERS_KEY + id;
+        String countKey = BLOG_LIKE_COUNT_KEY + id;
+        stringRedisTemplate.opsForValue().setIfAbsent(
+                countKey,
+                String.valueOf(blog.getLiked() == null ? 0 : blog.getLiked())
+        );
+        Long delta = stringRedisTemplate.execute(
+                LIKE_TOGGLE_SCRIPT,
+                Arrays.asList(likedUsersKey, countKey, HOT_BLOG_KEY),
+                userId.toString(),
+                id.toString()
+        );
+        if (delta == null) {
+            return Result.fail("点赞失败，请稍后重试");
+        }
+
+        boolean updated;
+        if (delta > 0) {
+            updated = update().setSql("liked = liked + 1").eq("id", id).update();
+        } else {
+            updated = update().setSql("liked = GREATEST(liked - 1, 0)").eq("id", id).update();
+        }
+        if (!updated) {
+            // Redis 是点赞切换的原子入口；数据库更新失败时反向执行一次切换。
+            stringRedisTemplate.execute(
+                    LIKE_TOGGLE_SCRIPT,
+                    Arrays.asList(likedUsersKey, countKey, HOT_BLOG_KEY),
+                    userId.toString(),
+                    id.toString()
+            );
+            return Result.fail("点赞状态保存失败");
+        }
+        return Result.ok(delta > 0);
     }
 
     @Override
     public Result queryBlogLikes(Long id) {
-        String key = BLOG_LIKED_KEY + id;
-        // 1.查询top5的点赞用户 zrange key 0 4
-        Set<String> top5 = stringRedisTemplate.opsForZSet().range(key, 0, 4);
-        if (top5 == null || top5.isEmpty()) {
+        Set<String> likedUsers = stringRedisTemplate.opsForSet().members(BLOG_LIKED_USERS_KEY + id);
+        if (likedUsers == null || likedUsers.isEmpty()) {
             return Result.ok(Collections.emptyList());
         }
-        // 2.解析出其中的用户id
-        List<Long> ids = top5.stream().map(Long::valueOf).collect(Collectors.toList());
+        List<Long> ids = likedUsers.stream()
+                .map(Long::valueOf)
+                .sorted(Comparator.naturalOrder())
+                .limit(5)
+                .collect(Collectors.toList());
         String idStr = StrUtil.join(",", ids);
-        // 3.根据用户id查询用户 WHERE id IN ( 5 , 1 ) ORDER BY FIELD(id, 5, 1)
         List<UserDTO> userDTOS = userService.query()
                 .in("id", ids).last("ORDER BY FIELD(id," + idStr + ")").list()
                 .stream()
                 .map(user -> BeanUtil.copyProperties(user, UserDTO.class))
                 .collect(Collectors.toList());
-        // 4.返回
         return Result.ok(userDTOS);
     }
 
@@ -106,6 +135,9 @@ public class BlogServiceImpl extends ServiceImpl<BlogMapper, Blog> implements IB
         if(!isSuccess){
             return Result.fail("新增笔记失败!");
         }
+        int initialLiked = blog.getLiked() == null ? 0 : blog.getLiked();
+        stringRedisTemplate.opsForZSet().add(HOT_BLOG_KEY, blog.getId().toString(), initialLiked);
+        stringRedisTemplate.opsForValue().set(BLOG_LIKE_COUNT_KEY + blog.getId(), String.valueOf(initialLiked));
         // 3.查询笔记作者的所有粉丝 select * from tb_follow where follow_user_id = ?
         List<Follow> follows = followService.query().eq("follow_user_id", user.getId()).list();
         // 4.推送笔记id给所有粉丝
@@ -122,13 +154,20 @@ public class BlogServiceImpl extends ServiceImpl<BlogMapper, Blog> implements IB
 
     @Override
     public Result queryHotBlog(Integer current) {
-        // 根据用户查询
-        Page<Blog> page = query()
-                .orderByDesc("liked")
-                .page(new Page<>(current, SystemConstants.MAX_PAGE_SIZE));
-        // 获取当前页数据
-        List<Blog> records = page.getRecords();
-        // 查询用户
+        int safeCurrent = Math.max(1, current == null ? 1 : current);
+        int from = (safeCurrent - 1) * SystemConstants.MAX_PAGE_SIZE;
+        int to = safeCurrent * SystemConstants.MAX_PAGE_SIZE - 1;
+        Set<String> idSet = stringRedisTemplate.opsForZSet().reverseRange(HOT_BLOG_KEY, from, to);
+        if (idSet == null || idSet.isEmpty()) {
+            return Result.ok(Collections.emptyList());
+        }
+
+        List<Long> ids = idSet.stream().map(Long::valueOf).collect(Collectors.toList());
+        String idStr = StrUtil.join(",", ids);
+        List<Blog> records = query()
+                .in("id", ids)
+                .last("ORDER BY FIELD(id," + idStr + ")")
+                .list();
         records.forEach(blog -> {
             this.queryBlogUser(blog);
             this.isBlogLiked(blog);
@@ -213,9 +252,10 @@ public class BlogServiceImpl extends ServiceImpl<BlogMapper, Blog> implements IB
             return;
         }
         Long userId = user.getId();
-        // 2.判断当前登录用户是否已经点赞
-        String key = "blog:liked:" + blog.getId();
-        Double score = stringRedisTemplate.opsForZSet().score(key, userId.toString());
-        blog.setIsLike(score != null);
+        Boolean liked = stringRedisTemplate.opsForSet().isMember(
+                BLOG_LIKED_USERS_KEY + blog.getId(),
+                userId.toString()
+        );
+        blog.setIsLike(Boolean.TRUE.equals(liked));
     }
 }

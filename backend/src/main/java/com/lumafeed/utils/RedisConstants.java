@@ -15,7 +15,9 @@ public class RedisConstants {
     public static final Long LOCK_SHOP_TTL = 10L;
 
     public static final String SECKILL_STOCK_KEY = "seckill:stock:";
-    public static final String BLOG_LIKED_KEY = "blog:liked:";
+    public static final String BLOG_LIKED_USERS_KEY = "blog:like:users:";
+    public static final String BLOG_LIKE_COUNT_KEY = "blog:like:count:";
+    public static final String HOT_BLOG_KEY = "blog:hot:zset";
     public static final String FEED_KEY = "feed:";
     public static final String SHOP_GEO_KEY = "shop:geo:";
     public static final String USER_SIGN_KEY = "sign:";

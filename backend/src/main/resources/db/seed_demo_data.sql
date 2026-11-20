@@ -21,16 +21,6 @@ UPDATE tb_user SET nick_name = '叶晚晴' WHERE id = 14;
 UPDATE tb_user SET nick_name = '江屿' WHERE id = 15;
 UPDATE tb_user SET nick_name = '程橙' WHERE id = 16;
 
--- LumenPilot credentials share the LumaFeed MySQL database. Reset all local
--- testing accounts to the requested display-name and password convention.
-UPDATE tb_lumenpilot_account
-SET username = CONCAT('体验用户', LPAD(id, 2, '0')),
-    password_hash = '$2b$12$Y56MlvvAjYFijnEP9lN5TuTQFlbgwl8VWjFmxHjynlZFkqOmA4gHy';
-
-UPDATE tb_lumenpilot_account SET username = '秦子豪管理员' WHERE email = 'admin.qzh@lumafeed.local';
-UPDATE tb_lumenpilot_account SET username = '运营管理员' WHERE email = 'admin.ops@lumafeed.local';
-UPDATE tb_lumenpilot_account SET username = '审计管理员' WHERE email = 'admin.audit@lumafeed.local';
-
 INSERT INTO tb_blog (shop_id, user_id, title, images, content, liked, comments, create_time, update_time) VALUES
 (1, 1, '杭州小巷里的宝藏茶餐厅，人均35吃到扶墙', '/imgs/blogs/blog1.jpg', '周末在运河边闲逛时发现的茶餐厅，菠萝油和冻柠茶都很稳，饭点稍微排队但翻台很快。', 126, 18, DATE_SUB(NOW(), INTERVAL 6 HOUR), DATE_SUB(NOW(), INTERVAL 6 HOUR)),
 (2, 1, '运河边新开的铜锅涮肉，秋日聚餐太合适', '/imgs/blogs/0/5/e3e7c9e7-6654-4065-b47a-b86eb4541c33.jpg', '清汤锅底保留羊肉本味，麻酱和糖蒜搭配起来很舒服，四个人点两盘肉就够。', 98, 12, DATE_SUB(NOW(), INTERVAL 22 HOUR), DATE_SUB(NOW(), INTERVAL 22 HOUR)),

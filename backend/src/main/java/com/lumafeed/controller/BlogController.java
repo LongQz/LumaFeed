@@ -8,11 +8,13 @@ import com.lumafeed.entity.Blog;
 import com.lumafeed.entity.User;
 import com.lumafeed.service.IBlogService;
 import com.lumafeed.service.IUserService;
+import com.lumafeed.service.RedisRateLimitService;
 import com.lumafeed.utils.SystemConstants;
 import com.lumafeed.utils.UserHolder;
 import org.springframework.web.bind.annotation.*;
 
 import javax.annotation.Resource;
+import javax.servlet.http.HttpServletRequest;
 import java.util.List;
 
 /**
@@ -31,16 +33,24 @@ public class BlogController {
     private IBlogService blogService;
     @Resource
     private IUserService userService;
+    @Resource
+    private RedisRateLimitService rateLimitService;
 
     //保存博文
     @PostMapping
-    public Result saveBlog(@RequestBody Blog blog) {
+    public Result saveBlog(@RequestBody Blog blog, HttpServletRequest request) {
+        if (!rateLimitService.tryAcquire("blog:publish:" + rateSubject(request), 20, 60)) {
+            return Result.fail("发布过于频繁，请稍后重试");
+        }
         return blogService.saveBlog(blog);
     }
 
     //点赞
     @PutMapping("/like/{id}")
-    public Result likeBlog(@PathVariable("id") Long id) {
+    public Result likeBlog(@PathVariable("id") Long id, HttpServletRequest request) {
+        if (!rateLimitService.tryAcquire("blog:like:" + rateSubject(request), 120, 60)) {
+            return Result.fail("点赞过于频繁，请稍后重试");
+        }
         return blogService.likeBlog(id);
     }
 
@@ -58,7 +68,12 @@ public class BlogController {
 
     // 查询最热博文
     @GetMapping("/hot")
-    public Result queryHotBlog(@RequestParam(value = "current", defaultValue = "1") Integer current) {
+    public Result queryHotBlog(
+            @RequestParam(value = "current", defaultValue = "1") Integer current,
+            HttpServletRequest request) {
+        if (!rateLimitService.tryAcquire("blog:hot:" + rateSubject(request), 50000, 60)) {
+            return Result.fail("请求过于频繁，请稍后重试");
+        }
         return blogService.queryHotBlog(current);
     }
 
@@ -89,7 +104,12 @@ public class BlogController {
 
     @GetMapping("/of/follow")
     public Result queryBlogOfFollow(
-            @RequestParam("lastId") Long max, @RequestParam(value = "offset", defaultValue = "0") Integer offset){
+            @RequestParam("lastId") Long max,
+            @RequestParam(value = "offset", defaultValue = "0") Integer offset,
+            HttpServletRequest request) {
+        if (!rateLimitService.tryAcquire("blog:feed:" + rateSubject(request), 30000, 60)) {
+            return Result.fail("请求过于频繁，请稍后重试");
+        }
         return blogService.queryBlogOfFollow(max, offset);
     }
 
@@ -97,5 +117,10 @@ public class BlogController {
     public Result test(){
         System.out.println("test");
         return Result.ok("test");
+    }
+
+    private String rateSubject(HttpServletRequest request) {
+        UserDTO user = UserHolder.getUser();
+        return user == null ? "ip:" + request.getRemoteAddr() : "user:" + user.getId();
     }
 }

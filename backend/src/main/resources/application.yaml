@@ -5,7 +5,7 @@ spring:
     name: lumafeed
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: ${LUMAFEED_MYSQL_URL:jdbc:mysql://localhost:3306/lumafeed?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=UTC}
+    url: ${LUMAFEED_MYSQL_URL:jdbc:mysql://localhost:3306/lumafeed?useUnicode=true&characterEncoding=utf8&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC}
     username: ${LUMAFEED_MYSQL_USERNAME:root}
     password: ${LUMAFEED_MYSQL_PASSWORD:123456}
   redis:
