@@ -64,7 +64,44 @@ X-LumaFeed-Agent-Token
 - `RRateLimiter` 对发布、点赞、Feed、热门读取和秒杀接口做分布式限流。
 - GEO 商户索引会在应用启动时从 MySQL 自动重建。
 
-压测结果和复现命令见 [docs/load-test-report.md](docs/load-test-report.md)。
+### 热门榜与 Feed 并发压测
+
+压测使用 Python 标准库启动固定数量并发线程，同时交替请求：
+
+```text
+GET /blog/hot?current=1
+GET /blog/of/follow?lastId=9999999999999&offset=0
+```
+
+测试前会通过验证码登录、关注关系和一篇新笔记准备真实的 Feed 数据，随后按固定持续时间持续读取，并统计吞吐、成功率、P50、P95、P99 和最大延迟。
+
+64 并发、持续 15 秒的本机结果：
+
+| 指标 | 结果 |
+|---|---:|
+| 总请求数 | 5,448 |
+| 成功请求数 | 5,448 |
+| 成功率 | 100% |
+| 吞吐量 | 360.10 requests/s |
+| 平均延迟 | 176.98 ms |
+| P50 | 164.67 ms |
+| P95 | 299.15 ms |
+| P99 | 321.08 ms |
+| 最大延迟 | 357.24 ms |
+
+Redisson 分布式限流同时做了独立验证：同一用户持续请求点赞接口，限额为每分钟 120 次；126 次请求中 120 次成功，后 6 次被限流拒绝。
+
+复现：
+
+```powershell
+python scripts\load_test.py `
+  --concurrency 64 `
+  --duration 15 `
+  --redis-cli "<path-to-redis-cli.exe>" `
+  --output docs/load-test-result-64.json
+```
+
+测试环境为单机 Spring Boot、MySQL、Redis 和 Nginx。结果用于同环境回归和优化对比，不代表生产集群容量。完整记录见 [docs/load-test-report.md](docs/load-test-report.md)。
 
 ## 数据库
 
